@@ -7,4 +7,6 @@ pub fn write_file(buf: Vec<u8>, name: &str) {
 
     file.write_all(buf.as_slice())
         .expect("Could not write audio file");
+
+    drop(file);
 }
