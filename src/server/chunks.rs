@@ -6,38 +6,42 @@ pub struct Chunk {
     pub data: Vec<u8>,
 }
 
-pub fn get_chunk(buf: &Vec<u8>, tag: &str) -> Chunk {
-    let position = get_chunk_pos(&buf, tag);
-    let chunk_size = get_chunk_size(&buf[position..(position+4)]);
+pub fn get_chunk(buf: &Vec<u8>, tag: &str) -> Result<Chunk, String> {
+    let position = get_chunk_pos(&buf, tag)?;
+    let chunk_size = get_chunk_size(&buf[position..(position+4)])?;
     let data = buf[(position+8)..(position+8 + chunk_size)].to_vec();
 
-    Chunk {
+    Ok(Chunk {
         name: String::from(tag),
         position,
         chunk_size,
         data
-    }
+    })
 }
 
-fn get_chunk_pos(buf: &Vec<u8>, tag: &str) -> usize {
+fn get_chunk_pos(buf: &Vec<u8>, tag: &str) -> Result<usize, String> {
     for i in 0..buf.len() {
         let slice = &buf[i..(i+4)];
 
         if slice == tag.as_bytes() {
-            return i-4;
+            return Ok(i-4);
         }
     }
 
-    panic!("ChunkError: Chunk {} not found!", tag);
+    Err(format!("ChunkError: Chunk {} not found!", tag))
 }
 
-fn get_chunk_size(buf_slice: &[u8]) -> usize {
-    buf_slice.iter()
+fn get_chunk_size(buf_slice: &[u8]) -> Result<usize, String> {
+    let slice_size = buf_slice.iter()
         .map(|x| *x as usize)
         .reduce(|mut acc: usize, byte: usize| {
             acc <<= 8;
             acc += byte;
             return acc;
-        })
-        .expect("ChunkError: Unable to calculate chunk size.")
+        });
+
+    match slice_size {
+        Some(size) => Ok(size),
+        None => Err(String::from("Chunk size not found!"))
+    }
 }

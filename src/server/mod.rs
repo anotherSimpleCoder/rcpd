@@ -27,22 +27,28 @@ fn receive(incoming: Result<TcpStream, Error>, config: &Config) {
         .expect("ServerError: Couldn't accept incoming connection!");
 
     let mut buffer: Vec<u8> = Vec::new();
-    stream.read_to_end(&mut buffer)
-        .expect("ServerError: Couldn't read incoming data!");
+    let _ = stream.read_to_end(&mut buffer);
 
     let handled = handler::handle_data(&buffer, stream.peer_addr().unwrap().to_string().as_str());
 
     match handled {
-        Some((filename, data)) => {
+        Ok((filename, data)) => {
             let path = Path::new(config.out_path.as_str());
             let full_path = path.join(filename)
                 .display()
                 .to_string();
 
-            file_handler::write_file(data, full_path.as_str());
+            let write_result = file_handler::write_file(data, full_path.as_str());
+            if write_result.is_err() {
+                gui::error("rcpd", write_result.unwrap_err().as_str());
+                return;
+            }
+
             gui::message("rcpd", "File transfer has been successful!");
         },
-        None => return
+        Err(_) => {
+            gui::error("rcpd", "File transfer failed!");
+        }
     }
 
 }
